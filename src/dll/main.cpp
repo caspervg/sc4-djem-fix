@@ -1,6 +1,6 @@
-#include "SC4TemplateDllDirector.hpp"
+#include "SC4DjemFixDirector.hpp"
 
-static SC4TemplateDllDirector sDirector;
+static SC4DjemFixDirector sDirector;
 
 cRZCOMDllDirector* RZGetCOMDllDirector()
 {

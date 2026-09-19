@@ -1,5 +1,5 @@
 add_executable(SC4DjemFixTests
-    FocusedTests.cpp
+    Tests.cpp
     "${CMAKE_SOURCE_DIR}/src/dll/DjemLogic.cpp"
     "${CMAKE_SOURCE_DIR}/src/dll/utils/Logger.cpp"
     "${CMAKE_SOURCE_DIR}/src/dll/utils/Settings.cpp"

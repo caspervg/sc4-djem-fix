@@ -68,7 +68,8 @@ constexpr auto kSectionName = "SC4DjemFix";
 }
 
 void LogInvalidValue(const char* name, const std::string& value, const std::filesystem::path& path) {
-    LOG_WARN("Settings: {} has invalid value '{}'. The default value is used. File: {}", name, value, path.string());
+    LOG_WARN("Settings: {} has invalid value '{}'. The default value is used. File: {}", name, value,
+             Logger::PathToUtf8(path));
 }
 } // namespace
 
@@ -130,7 +131,7 @@ void Settings::Load(const std::filesystem::path& settingsFilePath) {
                 LogInvalidValue("LogEveryNChanges", value, settingsFilePath);
         }
     } catch (const std::exception& e) {
-        LOG_ERROR("Settings: Could not read {}. {}", settingsFilePath.string(), e.what());
+        LOG_ERROR("Settings: Could not read {}. {}", Logger::PathToUtf8(settingsFilePath), e.what());
         *this = Settings();
     }
 }

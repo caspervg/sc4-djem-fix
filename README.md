@@ -14,7 +14,7 @@ The DLL checks the executable version and the original instruction targets befor
 
 Copy `SC4DjemFix.dll` and `SC4DjemFix.ini` to a folder in your SimCity 4 Plugins directory. The DLL reads the INI from the same directory as the DLL.
 
-The log file is named `SC4DjemFix.log`. It is written to the parent directory of the user Plugins directory. For a standard installation, this is the `Documents\SimCity 4` directory.
+The log file is named `SC4DjemFix.log`. It is written to the `Logs` directory inside the SimCity 4 user data directory. For a standard installation, this is `Documents\SimCity 4\Logs`. The directory is created if it does not exist. If the game does not report a user data directory, the log falls back to the directory holding the DLL.
 
 ## Configuration
 

@@ -4,6 +4,7 @@
 #include <filesystem>
 
 #include "DjemFix.h"
+#include "LogDirectoryManager.h"
 #include "utils/Settings.h"
 
 class cIGZMessage2;
@@ -28,10 +29,10 @@ class SC4DjemFixDirector final : public cRZMessage2COMDirector {
 
   private:
     static std::filesystem::path GetDllDirectory_();
-    static std::filesystem::path GetLogDirectory_();
     void InitializeLogger_();
     void Shutdown_() noexcept;
 
+    LogDirectoryManager logDirectoryManager_{};
     Settings settings_{};
     Djem::Fix djemFix_{};
     bool frameworkHookInstalled_ = false;

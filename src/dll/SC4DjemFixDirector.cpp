@@ -1,9 +1,6 @@
 #include "SC4DjemFixDirector.hpp"
 
-#include <cIGZApp.h>
 #include <cIGZFrameWork.h>
-#include <cISC4App.h>
-#include <cRZBaseString.h>
 
 #include "SC4VersionDetection.h"
 #include "utils/Logger.h"
@@ -21,6 +18,7 @@
 namespace {
 constexpr auto kDirectorId = 0x320238B2u;
 constexpr uint16_t kSupportedGameVersion = 641;
+constexpr auto kLogFileName = "SC4DjemFix.log";
 } // namespace
 
 SC4DjemFixDirector::SC4DjemFixDirector() = default;
@@ -90,35 +88,34 @@ std::filesystem::path SC4DjemFixDirector::GetDllDirectory_() {
     }
 }
 
-std::filesystem::path SC4DjemFixDirector::GetLogDirectory_() {
-    auto* const framework = RZGetFrameWork();
-    auto* const application = framework ? framework->Application() : nullptr;
-    cISC4App* sc4Application = nullptr;
-    if (application != nullptr &&
-        application->QueryInterface(GZIID_cISC4App, reinterpret_cast<void**>(&sc4Application))) {
-        cRZBaseString userPluginsPath;
-        const bool foundPath = sc4Application->GetUserPluginDirectory(userPluginsPath);
-        sc4Application->Release();
-        if (foundPath && userPluginsPath.Strlen() > 0) {
-            std::filesystem::path pluginsPath(userPluginsPath.ToChar());
-            if (pluginsPath.filename().empty())
-                pluginsPath = pluginsPath.parent_path();
-            return pluginsPath.parent_path();
-        }
-    }
-    return GetDllDirectory_().parent_path();
-}
-
 void SC4DjemFixDirector::InitializeLogger_() {
     const auto dllDirectory = GetDllDirectory_();
-    const auto logDirectory = GetLogDirectory_();
     const auto settingsPath = dllDirectory / "SC4DjemFix.ini";
-    Logger::Initialize("SC4DjemFix", logDirectory.string(), false);
+
+    // Init throws when cISC4App is unavailable or the directory cannot be created.
+    std::filesystem::path logFilePath;
+    std::string logDirectoryError;
+    try {
+        logDirectoryManager_.Init();
+        logFilePath = logDirectoryManager_.GetLogFilePath(kLogFileName);
+    } catch (const std::exception& e) {
+        logDirectoryError = e.what();
+    } catch (...) {
+        logDirectoryError = "An unknown error occurred.";
+    }
+    if (!logDirectoryError.empty())
+        logFilePath = dllDirectory / kLogFileName;
+
+    Logger::Initialize("SC4DjemFix", logFilePath, false);
     settings_.Load(settingsPath);
     Logger::Shutdown();
-    Logger::Initialize("SC4DjemFix", logDirectory.string(), settings_.GetLogToFile());
+    Logger::Initialize("SC4DjemFix", logFilePath, settings_.GetLogToFile());
     Logger::SetLevel(settings_.GetLogLevel());
-    LOG_INFO("SC4DjemFix: Using settings file {}.", settingsPath.string());
+    if (!logDirectoryError.empty()) {
+        LOG_WARN("SC4DjemFix: Could not use the game log directory. {} Using {} instead.", logDirectoryError,
+                 Logger::PathToUtf8(logFilePath));
+    }
+    LOG_INFO("SC4DjemFix: Using settings file {}.", Logger::PathToUtf8(settingsPath));
 }
 
 void SC4DjemFixDirector::Shutdown_() noexcept {

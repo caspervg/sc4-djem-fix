@@ -1,5 +1,7 @@
 #pragma once
 
+#include <filesystem>
+#include <fstream>
 #include <memory>
 #include <string>
 
@@ -8,12 +10,15 @@
 class Logger {
   public:
     static std::shared_ptr<spdlog::logger> Get();
-    static void Initialize(const std::string& logName = "SC4DjemFix", const std::string& userDir = "",
+    static void Initialize(const std::string& logName = "SC4DjemFix", const std::filesystem::path& logFilePath = {},
                            bool logToFile = true);
     static void SetLevel(spdlog::level::level_enum logLevel);
     static void Shutdown();
 
+    [[nodiscard]] static std::string PathToUtf8(const std::filesystem::path& path);
+
   private:
+    static std::unique_ptr<std::ofstream> s_logFile;
     static std::shared_ptr<spdlog::logger> s_logger;
     static std::string s_logName;
     static bool s_initialized;

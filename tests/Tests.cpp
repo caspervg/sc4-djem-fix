@@ -7,6 +7,7 @@
 
 #include <filesystem>
 #include <fstream>
+#include <iterator>
 #include <limits>
 #include <string>
 
@@ -91,7 +92,7 @@ void WriteTextFile(const std::filesystem::path& path, const std::string& text) {
 }
 
 struct LoggerFixture {
-    LoggerFixture() { Logger::Initialize("SC4DjemFixTests", "", false); }
+    LoggerFixture() { Logger::Initialize("SC4DjemFixTests", {}, false); }
     ~LoggerFixture() { Logger::Shutdown(); }
 };
 } // namespace
@@ -191,4 +192,31 @@ TEST_CASE("relative call guard calculations decode without memory writes") {
     const auto encoded = Djem::EncodeRelativeCall(0x007498CD, 0x00743B60);
     REQUIRE(encoded);
     CHECK(*encoded == original);
+}
+
+TEST_CASE("the log file opens under a non-ASCII directory") {
+    Logger::Shutdown();
+    const auto directory = std::filesystem::current_path() / L"SC4DjemFix-t\u00E9st-\u65E5\u672C\u8A9E";
+    std::error_code ignored;
+    std::filesystem::remove_all(directory, ignored);
+
+    const auto path = directory / "SC4DjemFix.log";
+    Logger::Initialize("SC4DjemFixTests", path, true);
+    LOG_INFO("non-ascii marker");
+    Logger::Shutdown();
+
+    REQUIRE(std::filesystem::exists(path));
+    std::ifstream stream(path, std::ios::binary);
+    const std::string contents((std::istreambuf_iterator<char>(stream)), std::istreambuf_iterator<char>());
+    CHECK(contents.find("non-ascii marker") != std::string::npos);
+
+    stream.close();
+    std::filesystem::remove_all(directory, ignored);
+}
+
+TEST_CASE("the logger tolerates a log file it cannot open") {
+    Logger::Shutdown();
+    Logger::Initialize("SC4DjemFixTests", std::filesystem::path(), true);
+    LOG_INFO("no file sink");
+    Logger::Shutdown();
 }

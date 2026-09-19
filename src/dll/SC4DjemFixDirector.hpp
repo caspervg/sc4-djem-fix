@@ -3,6 +3,9 @@
 #include <cRZMessage2COMDirector.h>
 #include <filesystem>
 
+#include "DjemFix.h"
+#include "utils/Settings.h"
+
 class cIGZMessage2;
 class cIGZCOM;
 
@@ -25,6 +28,12 @@ public:
     bool DoMessage(cIGZMessage2* pMsg) override;
 
 private:
-    static std::filesystem::path GetUserPluginsPath_();
-    void InitializeLogger_();
+	static std::filesystem::path GetDllDirectory_();
+	static std::filesystem::path GetLogDirectory_();
+	void InitializeLogger_();
+	void Shutdown_() noexcept;
+
+	Settings settings_{};
+	Djem::Fix djemFix_{};
+	bool frameworkHookInstalled_ = false;
 };

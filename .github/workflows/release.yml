@@ -59,16 +59,12 @@ jobs:
           .\vendor\vcpkg\bootstrap-vcpkg.bat
           echo "VCPKG_ROOT=${{ github.workspace }}/vendor/vcpkg" >> $env:GITHUB_ENV
 
-      - name: Rename template for release build
-        if: github.event.repository.is_template
-        shell: powershell
-        run: py -3 tools/rename_project.py SC4TemplateRelease --ui imgui
-
-      - name: Build DLL
+      - name: Configure, build, and test
         shell: powershell
         run: |
-          cmake --preset vs2022-win32-release
+          cmake --preset vs2022-win32-release -DSC4_ENABLE_PLUGIN_DEPLOYMENT=OFF
           cmake --build --preset vs2022-win32-release-build --parallel
+          ctest --test-dir cmake-build-release-visual-studio -C Release --output-on-failure
 
       - name: Verify DLL output
         shell: powershell
@@ -97,7 +93,11 @@ jobs:
           Copy-Item "LICENSE.txt" -Destination $packageDir
           Copy-Item "THIRD_PARTY_NOTICES.txt" -Destination $packageDir
           Copy-Item "vendor/gzcom-dll/LICENSE" -Destination (Join-Path $packageDir "LICENSE-gzcom-dll")
-          Copy-Item "vendor/sc4-render-services/LICENSE.txt" -Destination (Join-Path $packageDir "LICENSE-sc4-render-services.txt")
+          Copy-Item "vendor/sc4-dll-utilities/LICENSE.txt" -Destination (Join-Path $packageDir "LICENSE-sc4-dll-utilities.txt")
+          Copy-Item "vcpkg_installed/x86-windows-static-md/share/fmt/copyright" -Destination (Join-Path $packageDir "LICENSE-fmt.txt")
+          Copy-Item "vcpkg_installed/x86-windows-static-md/share/pulzed-mini/copyright" -Destination (Join-Path $packageDir "LICENSE-mINI.txt")
+          Copy-Item "vcpkg_installed/x86-windows-static-md/share/spdlog/copyright" -Destination (Join-Path $packageDir "LICENSE-spdlog.txt")
+          Copy-Item "vcpkg_installed/x86-windows-static-md/share/wil/copyright" -Destination (Join-Path $packageDir "LICENSE-WIL.txt")
 
           $archivePath = Join-Path "${{ github.workspace }}" ("$($env:PROJECT_NAME)-" + $tag + "-win32.zip")
           if (Test-Path $archivePath) {

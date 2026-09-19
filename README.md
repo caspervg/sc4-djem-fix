@@ -1,129 +1,78 @@
-# SC4 DLL Template
+# SC4 DJEM Fix
 
-`SC4 DLL Template` is a GitHub template repository for building new SimCity 4 Win32 DLL plugins with the same basic toolchain and deployment flow used in `sc4-advanced-plop`.
+SC4 DJEM Fix corrects diagonal jagged edges in steep SimCity 4 terrain. The game divides each terrain cell along one diagonal. Near a sharp height change, the other diagonal can give a smoother surface. This DLL selects the diagonal with the smaller height discontinuity after the game updates terrain normals and cliff textures.
 
-It includes:
+The fix also makes terrain height queries use the corrected diagonal. This keeps prop placement and other height-dependent behavior aligned with the rendered surface.
 
-- `gzcom-dll`, `sc4-dll-utilities`, `sc4-render-services`, and `vcpkg` as git submodules
-- `spdlog`, `mINI` (`pulzed-mini` in vcpkg), and `WIL` via vcpkg manifest mode
-- LGPL-3.0-or-later licensing with third-party notices
-- the Win32 static-library vcpkg triplet `x86-windows-static-md`
-- Visual Studio 2022 Win32 debug and release presets
-- automatic post-build deployment to `Documents\SimCity 4\Plugins`
-- a starter `cRZMessage2COMDirector` implementation
-- reusable logging, version detection, and INI settings helpers
-- a minimal ImGui panel wired through `sc4-render-services`
-- a GitHub Actions workflow that builds Win32 debug and release DLL artifacts
-- a tag-based GitHub Actions release workflow that publishes a packaged release zip
+## Compatibility
 
-## Quick start
+The DLL supports **SimCity 4 Deluxe for Windows, version 1.1.641 only**. It does not claim support for 1.1.610, 1.1.638, 1.1.640, or any other executable.
 
-1. Create a new repository from this template on GitHub and let the
-   `Initialize template` action finish. It derives the C++ project name from
-   the repository name and commits the initialized source once.
-2. Clone it with submodules:
+The DLL checks the executable version and the original instruction targets before it writes game memory. An unsupported or modified executable fails closed. No hook is installed when a check fails.
 
-```powershell
-git clone --recurse-submodules <your-repo-url>
-cd <your-repo-directory>
-```
+## Installation
 
-3. Repository-name parts use the casing common to the sibling SC4 projects,
-   for example `sc4-season-jumper` becomes `SC4SeasonJumper`. A `ui` or `imgui`
-   part selects the ImGui starter; all other names select the standalone
-   starter. To initialize manually or override that choice:
+Copy `SC4DjemFix.dll` and `SC4DjemFix.ini` to a folder in your SimCity 4 Plugins directory. The DLL reads the INI from the same directory as the DLL.
 
-```powershell
-python .\tools\rename_project.py YourDllName --ui imgui
-# or infer the C++ name and UI default from a repository name:
-python .\tools\rename_project.py sc4-season-jumper --repository-name
-```
+The log file is named `SC4DjemFix.log`. It is written to the parent directory of the user Plugins directory. For a standard installation, this is the `Documents\SimCity 4` directory.
 
-4. Bootstrap vcpkg:
+## Configuration
 
-```powershell
-.\vendor\vcpkg\bootstrap-vcpkg.bat
-```
+All values are in the `[SC4DjemFix]` section.
 
-The template defaults to the Win32 static-library triplet used by this codebase:
+| Setting | Default | Meaning |
+| --- | --- | --- |
+| `LogLevel` | `info` | Log level: `trace`, `debug`, `info`, `warn`, `error`, `critical`, or `off`. |
+| `LogToFile` | `true` | Write `SC4DjemFix.log` when true. |
+| `Enabled` | `true` | Enable the terrain diagonal fix. |
+| `ClearNonCandidates` | `true` | Remove an old internal flip when a cell no longer meets `MinHeightDelta`. |
+| `MatchHeightQueriesToFlippedCells` | `true` | Use the corrected surface for terrain height queries. |
+| `MinHeightDelta` | `12.0` | Minimum height range across the four cell corners before the cell is considered. |
+| `DiagonalHysteresis` | `0.05` | Keep the current diagonal when both choices are almost equal. This prevents repeated switching. |
+| `LogEveryNChanges` | `0` | Write a summary after this many cell changes. `0` disables summaries. `1` writes one summary for every terrain-update pass that changes cells. Negative and invalid values use `0`. |
 
-```text
-x86-windows-static-md
-```
+Invalid Boolean, numeric, non-finite, negative, or overflowing values produce a warning and use a safe default.
 
-5. Configure and build the DLL:
+## How it works
 
-```powershell
-cmake --preset vs2022-win32-debug
-cmake --build --preset vs2022-win32-debug-build
-```
+The DLL first calls the game's original normals and cliff-texture function. It then processes only the cells affected by that function's dirty vertex rectangle. It does not change cells managed by the game's cliff system.
 
-For a release build:
+Hook installation uses the patching and version-detection code from `sc4-dll-utilities`. The terrain calculation, terrain-memory access, and hook lifecycle are in separate components. The hot cell loop does not allocate memory, write logs, read files, perform virtual calls, or take locks.
 
-```powershell
-cmake --preset vs2022-win32-release
-cmake --build --preset vs2022-win32-release-build
-```
+`cISTETerrainMap::GetAltitude(float, float)` is declared by `gzcom-dll`, and that declaration is used for the terrain type and ABI. The DLL must hook its vtable entry so existing game callers see corrected heights. The hook cannot call the same virtual method for fallback because that would recurse. It calls the original target only after the vtable target was validated.
 
-## Deployment
+## Build and test
 
-By default, the DLL target copies the built DLL into:
-
-```text
-%USERPROFILE%\Documents\SimCity 4\Plugins
-```
-
-The default INI file in `dist/` is copied only if it does not already exist in the Plugins folder, so user changes survive rebuilds.
-
-Disable automatic deployment with:
+Visual Studio 2022 and a recursive clone are required. These commands keep automatic Plugins deployment off:
 
 ```powershell
 cmake --preset vs2022-win32-debug -DSC4_ENABLE_PLUGIN_DEPLOYMENT=OFF
+cmake --build --preset vs2022-win32-debug-build
+ctest --preset vs2022-win32-debug-test
+
+cmake --preset vs2022-win32-release -DSC4_ENABLE_PLUGIN_DEPLOYMENT=OFF
+cmake --build --preset vs2022-win32-release-build
+ctest --preset vs2022-win32-release-test
 ```
 
-Set a custom Plugins directory with:
+SC4 is a 32-bit process. CMake rejects a 64-bit compiler. In CLion, select an x86 MSVC toolchain or use the Visual Studio Win32 presets. Selecting Ninja with the default x64 MSVC toolchain cannot link the required x86 dependencies.
 
-```powershell
-cmake --preset vs2022-win32-debug -DSC4_PLUGINS_DIR="C:/path/to/SimCity 4/Plugins"
-```
+## Verification status
 
-The `--ui` choice is materialized by the initializer. The generated project
-contains either the ImGui director and panel or the standalone non-ImGui
-director; there are no ImGui conditionals in generated C++.
+The Windows 1.1.641 executable was checked statically in Ghidra. The call target, vtable entry, original functions, calling conventions, object offsets, record size, and terrain flags are recorded in [docs/reverse-engineering.md](docs/reverse-engineering.md).
 
-## CI and releases
+Automated tests cover diagonal selection, thresholds, hysteresis, stale flips, cliff exclusion, dirty-area bounds, altitude interpolation, invalid coordinates, settings, and relative-call guard calculations.
 
-- `build.yml` runs on pushes to `main`, pull requests, and manual dispatch to validate debug and release builds.
-- `initialize.yml` runs once when GitHub creates a repository from the template, then removes itself.
-- `release.yml` runs on tags matching `vMAJOR.MINOR.PATCH` and publishes a GitHub Release containing a zip with the built DLL, default INI, README, third-party notices, and upstream dependency licenses.
+No game process is launched during automated verification. A release should still receive an in-game smoke test on Windows 1.1.641:
 
-## Template layout
+1. Confirm that the log reports successful hook installation.
+2. Raise and lower steep terrain and confirm that diagonal spikes are removed.
+3. Place props on corrected cells and confirm that their height matches the rendered terrain.
+4. Disable each optional behavior in the INI and confirm the documented result.
+5. Exit the game normally and confirm that no shutdown error is logged.
 
-- `src/dll/`: materialized DLL source, director, and utilities
-- `templates/`: ImGui and non-ImGui director variants used by the initializer
-- `dist/`: default runtime INI file
-- `cmake/`: helper scripts used by the build
-- `tools/`: template maintenance helpers such as project renaming
-- `vendor/`: git submodules
+## Provenance and license
 
-## Notes
+The behavior was adapted from the `re/djem` branch of [caspervg/sc4-render-services](https://github.com/caspervg/sc4-render-services/tree/re/djem), resolved at commit `c146049fd5ccab2c30d4156a731a06f2a8160285`. That sample was used as a behavioral prototype. Its patching and version-detection helpers were not copied.
 
-- The template is intentionally Win32-only because SimCity 4 is a 32-bit game.
-- ImGui is built in-tree from `sc4-render-services` by the main CMake build.
-- `--ui none` removes the starter panel and its render-services dependency during initialization.
-- The built DLL includes version metadata generated from the CMake/Git version.
-- `sc4-dll-utilities` sources are compiled into the DLL; its `Logger.cpp` is excluded because the template uses its own spdlog-based logger.
-- `mINI` is consumed via vcpkg as the `pulzed-mini` port and included as `mini/ini.h`.
-
-## Customization checklist
-
-After renaming the project, review these starter values:
-
-- replace the demo panel and director hooks with plugin-specific logic;
-- choose `--ui imgui` or `--ui none` when initializing the project;
-- update the panel title, INI section, and default settings;
-- choose a release version and create a `vMAJOR.MINOR.PATCH` tag;
-- keep the generated director and panel IDs unless you deliberately need compatibility with an existing plugin.
-
-The rename script replaces the starter director and panel IDs with project-specific constants, so the finished DLL does not need any ID-generation code.
-The unrenamed template intentionally does not compile; this prevents accidentally shipping the placeholder IDs.
+SC4 DJEM Fix is licensed under LGPL-3.0-or-later. See `LICENSE.txt` and `THIRD_PARTY_NOTICES.txt`.

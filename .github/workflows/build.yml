@@ -60,16 +60,12 @@ jobs:
           .\vendor\vcpkg\bootstrap-vcpkg.bat
           echo "VCPKG_ROOT=${{ github.workspace }}/vendor/vcpkg" >> $env:GITHUB_ENV
 
-      - name: Rename template for CI build
-        if: github.event.repository.is_template
-        shell: powershell
-        run: py -3 tools/rename_project.py SC4TemplateCi --ui imgui
-
-      - name: Build DLL
+      - name: Configure, build, and test
         shell: powershell
         run: |
-          cmake --preset ${{ matrix.preset }}
+          cmake --preset ${{ matrix.preset }} -DSC4_ENABLE_PLUGIN_DEPLOYMENT=OFF
           cmake --build --preset ${{ matrix.build_preset }} --parallel
+          ctest --test-dir ${{ matrix.binary_dir }} -C ${{ matrix.config }} --output-on-failure
 
       - name: Verify DLL output
         shell: powershell

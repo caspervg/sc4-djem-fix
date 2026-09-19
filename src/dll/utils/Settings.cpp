@@ -1,20 +1,23 @@
 #include "Settings.h"
 
 #include <algorithm>
+#include <charconv>
 #include <cctype>
+#include <cmath>
 #include <exception>
+#include <optional>
 #include <string>
 
 #include "Logger.h"
 #include "mini/ini.h"
 
-namespace {
-    constexpr auto kDefaultLogLevel = spdlog::level::info;
-    constexpr bool kDefaultLogToFile = true;
-    constexpr bool kDefaultStartWindowVisible = true;
-    constexpr auto kSectionName = "SC4DjemFix";
+namespace
+{
+	constexpr auto kDefaultLogLevel = spdlog::level::info;
+	constexpr bool kDefaultLogToFile = true;
+	constexpr auto kSectionName = "SC4DjemFix";
 
-    std::string ToLower(std::string value)
+	[[nodiscard]] std::string ToLower(std::string value)
     {
         std::ranges::transform(value, value.begin(), [](const unsigned char c) {
             return static_cast<char>(std::tolower(c));
@@ -22,44 +25,57 @@ namespace {
         return value;
     }
 
-    spdlog::level::level_enum ParseLogLevel(const std::string& value, bool& valid)
-    {
-        const std::string normalized = ToLower(value);
+	[[nodiscard]] std::optional<spdlog::level::level_enum> ParseLogLevel(const std::string& value)
+	{
+		const std::string normalized = ToLower(value);
+		if (normalized == "trace") return spdlog::level::trace;
+		if (normalized == "debug") return spdlog::level::debug;
+		if (normalized == "info") return spdlog::level::info;
+		if (normalized == "warn" || normalized == "warning") return spdlog::level::warn;
+		if (normalized == "error") return spdlog::level::err;
+		if (normalized == "critical") return spdlog::level::critical;
+		if (normalized == "off") return spdlog::level::off;
+		return std::nullopt;
+	}
 
-        if (normalized == "trace") { valid = true; return spdlog::level::trace; }
-        if (normalized == "debug") { valid = true; return spdlog::level::debug; }
-        if (normalized == "info") { valid = true; return spdlog::level::info; }
-        if (normalized == "warn" || normalized == "warning") { valid = true; return spdlog::level::warn; }
-        if (normalized == "error") { valid = true; return spdlog::level::err; }
-        if (normalized == "critical") { valid = true; return spdlog::level::critical; }
-        if (normalized == "off") { valid = true; return spdlog::level::off; }
+	[[nodiscard]] std::optional<bool> ParseBool(const std::string& value)
+	{
+		const std::string normalized = ToLower(value);
+		if (normalized == "true" || normalized == "1" || normalized == "yes") return true;
+		if (normalized == "false" || normalized == "0" || normalized == "no") return false;
+		return std::nullopt;
+	}
 
-        valid = false;
-        return kDefaultLogLevel;
-    }
+	[[nodiscard]] std::optional<float> ParseNonNegativeFloat(const std::string& value)
+	{
+		float result = 0.0F;
+		const auto [end, error] = std::from_chars(value.data(), value.data() + value.size(), result);
+		if (error != std::errc{} || end != value.data() + value.size() ||
+			!std::isfinite(result) || result < 0.0F)
+		{
+			return std::nullopt;
+		}
+		return result;
+	}
 
-    bool ParseBool(const std::string& value, bool& valid)
-    {
-        const std::string normalized = ToLower(value);
+	[[nodiscard]] std::optional<std::uint32_t> ParseUInt32(const std::string& value)
+	{
+		std::uint32_t result = 0;
+		const auto [end, error] = std::from_chars(value.data(), value.data() + value.size(), result);
+		if (error != std::errc{} || end != value.data() + value.size()) return std::nullopt;
+		return result;
+	}
 
-        if (normalized == "true" || normalized == "1" || normalized == "yes") {
-            valid = true;
-            return true;
-        }
-        if (normalized == "false" || normalized == "0" || normalized == "no") {
-            valid = true;
-            return false;
-        }
-
-        valid = false;
-        return false;
-    }
+	void LogInvalidValue(const char* name, const std::string& value, const std::filesystem::path& path)
+	{
+		LOG_WARN("Settings: {} has invalid value '{}'. The default value is used. File: {}", name, value, path.string());
+	}
 }
 
 Settings::Settings()
     : logLevel_(kDefaultLogLevel)
     , logToFile_(kDefaultLogToFile)
-    , startWindowVisible_(kDefaultStartWindowVisible)
+	, djemSettings_()
 {
 }
 
@@ -77,35 +93,43 @@ void Settings::Load(const std::filesystem::path& settingsFilePath)
 
         const auto section = ini.get(kSectionName);
 
-        if (section.has("LogLevel")) {
-            bool valid = false;
-            logLevel_ = ParseLogLevel(section.get("LogLevel"), valid);
-            if (!valid) {
-                logLevel_ = kDefaultLogLevel;
-                LOG_WARN("Invalid LogLevel in {}", settingsFilePath.string());
-            }
-        }
+		const auto loadBool = [&](const char* name, bool& destination) {
+			if (!section.has(name)) return;
+			const std::string value = section.get(name);
+			if (const auto parsed = ParseBool(value)) destination = *parsed;
+			else LogInvalidValue(name, value, settingsFilePath);
+		};
 
-        if (section.has("LogToFile")) {
-            bool valid = false;
-            logToFile_ = ParseBool(section.get("LogToFile"), valid);
-            if (!valid) {
-                logToFile_ = kDefaultLogToFile;
-                LOG_WARN("Invalid LogToFile in {}", settingsFilePath.string());
-            }
-        }
+		if (section.has("LogLevel"))
+		{
+			const std::string value = section.get("LogLevel");
+			if (const auto parsed = ParseLogLevel(value)) logLevel_ = *parsed;
+			else LogInvalidValue("LogLevel", value, settingsFilePath);
+		}
 
-        if (section.has("StartWindowVisible")) {
-            bool valid = false;
-            startWindowVisible_ = ParseBool(section.get("StartWindowVisible"), valid);
-            if (!valid) {
-                startWindowVisible_ = kDefaultStartWindowVisible;
-                LOG_WARN("Invalid StartWindowVisible in {}", settingsFilePath.string());
-            }
-        }
+		loadBool("LogToFile", logToFile_);
+		loadBool("Enabled", djemSettings_.enabled);
+		loadBool("ClearNonCandidates", djemSettings_.clearNonCandidates);
+		loadBool("MatchHeightQueriesToFlippedCells", djemSettings_.matchHeightQueriesToFlippedCells);
+
+		const auto loadFloat = [&](const char* name, float& destination) {
+			if (!section.has(name)) return;
+			const std::string value = section.get(name);
+			if (const auto parsed = ParseNonNegativeFloat(value)) destination = *parsed;
+			else LogInvalidValue(name, value, settingsFilePath);
+		};
+		loadFloat("MinHeightDelta", djemSettings_.minHeightDelta);
+		loadFloat("DiagonalHysteresis", djemSettings_.diagonalHysteresis);
+
+		if (section.has("LogEveryNChanges"))
+		{
+			const std::string value = section.get("LogEveryNChanges");
+			if (const auto parsed = ParseUInt32(value)) djemSettings_.logEveryNChanges = *parsed;
+			else LogInvalidValue("LogEveryNChanges", value, settingsFilePath);
+		}
     }
     catch (const std::exception& e) {
-        LOG_ERROR("Failed to read settings from {}: {}", settingsFilePath.string(), e.what());
+		LOG_ERROR("Settings: Could not read {}. {}", settingsFilePath.string(), e.what());
         *this = Settings();
     }
 }
@@ -120,8 +144,8 @@ bool Settings::GetLogToFile() const noexcept
     return logToFile_;
 }
 
-bool Settings::GetStartWindowVisible() const noexcept
+const Djem::Settings& Settings::GetDjemSettings() const noexcept
 {
-    return startWindowVisible_;
+	return djemSettings_;
 }
 

@@ -1,16 +1,32 @@
 Third-party notices
 ===================
 
-The SC4 DLL Template itself is licensed under LGPL-3.0-or-later; see
-LICENSE.txt.
+SC4 DJEM Fix is licensed under LGPL-3.0-or-later. See LICENSE.txt.
 
-This project uses the following third-party components:
+DJEM behavior provenance
+------------------------
 
-* gzcom-dll, included as source under vendor/gzcom-dll
-* sc4-dll-utilities, included as source under vendor/sc4-dll-utilities
-* sc4-render-services and Dear ImGui, included under vendor/sc4-render-services
-* spdlog, mINI, and WIL, provided through the vcpkg manifest
+The terrain diagonal behavior in this project was adapted from
+caspervg/sc4-render-services, branch re/djem, resolved at commit:
+
+    c146049fd5ccab2c30d4156a731a06f2a8160285
+
+Relevant upstream source:
+
+    src/sample/terrain-diagonal-fix/TerrainDiagonalFixDirector.cpp
+    SC4TerrainDiagonalFix.ini
+
+sc4-render-services was used as a behavioral reference only. The finished DLL
+does not link to it, copy its patching helpers, or require it at runtime.
+
+Other components
+----------------
+
+* gzcom-dll, compiled from source under vendor/gzcom-dll
+* sc4-dll-utilities, compiled from source under vendor/sc4-dll-utilities
+* spdlog, mINI (pulzed-mini), and WIL, supplied through vcpkg
+* doctest, supplied through vcpkg and used by the test executable only
 
 Each component's license and copyright notice is retained in its vendored
-source tree or package metadata. Release archives should include the relevant
-upstream license files when redistributing those components.
+source tree or package metadata. Release archives include the applicable
+upstream license files.

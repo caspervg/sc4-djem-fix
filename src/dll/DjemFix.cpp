@@ -18,13 +18,6 @@
 #include <cstring>
 #include <exception>
 
-#if !defined(_M_IX86)
-#error SC4DjemFix hook code requires the 32-bit MSVC x86 ABI.
-#endif
-
-static_assert(sizeof(void*) == 4, "SC4DjemFix only supports 32-bit SimCity 4");
-static_assert(sizeof(std::uintptr_t) == 4, "SC4DjemFix absolute addresses require 32-bit pointers");
-
 namespace {
 constexpr std::uintptr_t kCalculateNormalsCallSite = 0x007498CD;
 constexpr std::uintptr_t kCalculateNormalsOriginal = 0x00743B60;
@@ -33,56 +26,6 @@ constexpr std::uintptr_t kGetAltitudeOriginal = 0x00741260;
 
 constexpr Djem::RelativeCallBytes kExpectedCalculateNormalsCall{0xE8, 0x8E, 0xA2, 0xFF, 0xFF};
 } // namespace
-
-// The game calls static hook addresses and supplies no owner context. This is
-// the only process-global link to the director-owned Fix instance.
-Djem::Fix* Djem::Fix::activeInstance_ = nullptr;
-
-void __fastcall Djem::Fix::CalculateNormalsHook(cISTETerrainMap* terrain, void*, SC4Rect<std::int32_t>* dirtyVertices) {
-    Fix& fix = *activeInstance_;
-    fix.originalCalculateNormals_(terrain, dirtyVertices);
-    fix.terrainProcessor_.Apply(terrain, dirtyVertices);
-}
-
-float __fastcall Djem::Fix::GetAltitudeHook(cISTETerrainMap* terrain, void*, const float worldX, const float worldZ) {
-    Fix& fix = *activeInstance_;
-    const auto altitude = fix.terrainProcessor_.TryGetFlippedAltitude(terrain, worldX, worldZ);
-    if (altitude) {
-        return *altitude;
-    }
-    return fix.originalGetAltitude_(terrain, worldX, worldZ);
-}
-
-Djem::RelativeCallBytes Djem::Fix::ReadCallBytes() noexcept {
-    RelativeCallBytes bytes{};
-    std::memcpy(bytes.data(), reinterpret_cast<const void*>(kCalculateNormalsCallSite), bytes.size());
-    return bytes;
-}
-
-bool Djem::Fix::GuardOriginalCallSite() noexcept {
-    const RelativeCallBytes actual = ReadCallBytes();
-    const auto target = DecodeRelativeCallTarget(kCalculateNormalsCallSite, actual);
-    if (actual != kExpectedCalculateNormalsCall || target != kCalculateNormalsOriginal) {
-        LOG_ERROR(
-            "DJEM: Call guard failed at 0x{:08X}. Expected E8 8E A2 FF FF with target 0x{:08X}. No patch was written.",
-            static_cast<std::uint32_t>(kCalculateNormalsCallSite),
-            static_cast<std::uint32_t>(kCalculateNormalsOriginal));
-        return false;
-    }
-    return true;
-}
-
-bool Djem::Fix::GuardVtableEntry(const std::uintptr_t expectedTarget, const char* operation) noexcept {
-    const std::uintptr_t actualTarget = *reinterpret_cast<const std::uintptr_t*>(kGetAltitudeVtableEntry);
-    if (actualTarget != expectedTarget) {
-        LOG_ERROR("DJEM: The {} guard failed at vtable entry 0x{:08X}. Found 0x{:08X}, expected 0x{:08X}. No patch was "
-                  "written.",
-                  operation, static_cast<std::uint32_t>(kGetAltitudeVtableEntry),
-                  static_cast<std::uint32_t>(actualTarget), static_cast<std::uint32_t>(expectedTarget));
-        return false;
-    }
-    return true;
-}
 
 bool Djem::Fix::Install(const Settings& settings, const std::uint16_t gameVersion) {
     if (callHookInstalled_ || heightHookInstalled_) {
@@ -153,6 +96,52 @@ void Djem::Fix::Shutdown() noexcept {
     }
 }
 
+void __fastcall Djem::Fix::CalculateNormalsHook(cISTETerrainMap* terrain, void*, SC4Rect<std::int32_t>* dirtyVertices) {
+    Fix& fix = *activeInstance_;
+    fix.originalCalculateNormals_(terrain, dirtyVertices);
+    fix.terrainProcessor_.Apply(terrain, dirtyVertices);
+}
+
+float __fastcall Djem::Fix::GetAltitudeHook(cISTETerrainMap* terrain, void*, const float worldX, const float worldZ) {
+    Fix& fix = *activeInstance_;
+    const auto altitude = fix.terrainProcessor_.TryGetFlippedAltitude(terrain, worldX, worldZ);
+    if (altitude) {
+        return *altitude;
+    }
+    return fix.originalGetAltitude_(terrain, worldX, worldZ);
+}
+
+Djem::RelativeCallBytes Djem::Fix::ReadCallBytes() noexcept {
+    RelativeCallBytes bytes{};
+    std::memcpy(bytes.data(), reinterpret_cast<const void*>(kCalculateNormalsCallSite), bytes.size());
+    return bytes;
+}
+
+bool Djem::Fix::GuardOriginalCallSite() noexcept {
+    const RelativeCallBytes actual = ReadCallBytes();
+    const auto target = DecodeRelativeCallTarget(kCalculateNormalsCallSite, actual);
+    if (actual != kExpectedCalculateNormalsCall || target != kCalculateNormalsOriginal) {
+        LOG_ERROR(
+            "DJEM: Call guard failed at 0x{:08X}. Expected E8 8E A2 FF FF with target 0x{:08X}. No patch was written.",
+            static_cast<std::uint32_t>(kCalculateNormalsCallSite),
+            static_cast<std::uint32_t>(kCalculateNormalsOriginal));
+        return false;
+    }
+    return true;
+}
+
+bool Djem::Fix::GuardVtableEntry(const std::uintptr_t expectedTarget, const char* operation) noexcept {
+    const std::uintptr_t actualTarget = *reinterpret_cast<const std::uintptr_t*>(kGetAltitudeVtableEntry);
+    if (actualTarget != expectedTarget) {
+        LOG_ERROR("DJEM: The {} guard failed at vtable entry 0x{:08X}. Found 0x{:08X}, expected 0x{:08X}. No patch was "
+                  "written.",
+                  operation, static_cast<std::uint32_t>(kGetAltitudeVtableEntry),
+                  static_cast<std::uint32_t>(actualTarget), static_cast<std::uint32_t>(expectedTarget));
+        return false;
+    }
+    return true;
+}
+
 bool Djem::Fix::RestoreHeightHook() noexcept {
     if (!heightHookInstalled_) {
         return true;
@@ -200,3 +189,7 @@ bool Djem::Fix::RestoreCallHook() noexcept {
     }
     return false;
 }
+
+// The game calls static hook addresses and supplies no owner context. This is
+// the only process-global link to the director-owned Fix instance.
+Djem::Fix* Djem::Fix::activeInstance_ = nullptr;

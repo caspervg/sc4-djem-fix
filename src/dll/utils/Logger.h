@@ -5,17 +5,15 @@
 
 #include <spdlog/spdlog.h>
 
-class Logger
-{
-public:
+class Logger {
+  public:
     static std::shared_ptr<spdlog::logger> Get();
-    static void Initialize(const std::string& logName = "SC4DjemFix",
-                           const std::string& userDir = "",
+    static void Initialize(const std::string& logName = "SC4DjemFix", const std::string& userDir = "",
                            bool logToFile = true);
     static void SetLevel(spdlog::level::level_enum logLevel);
     static void Shutdown();
 
-private:
+  private:
     static std::shared_ptr<spdlog::logger> s_logger;
     static std::string s_logName;
     static bool s_initialized;
@@ -27,4 +25,3 @@ private:
 #define LOG_WARN(...) Logger::Get()->warn(__VA_ARGS__)
 #define LOG_ERROR(...) Logger::Get()->error(__VA_ARGS__)
 #define LOG_CRITICAL(...) Logger::Get()->critical(__VA_ARGS__)
-

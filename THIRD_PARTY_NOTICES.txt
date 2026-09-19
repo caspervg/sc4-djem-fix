@@ -3,22 +3,6 @@ Third-party notices
 
 SC4 DJEM Fix is licensed under LGPL-3.0-or-later. See LICENSE.txt.
 
-DJEM behavior provenance
-------------------------
-
-The terrain diagonal behavior in this project was adapted from
-caspervg/sc4-render-services, branch re/djem, resolved at commit:
-
-    c146049fd5ccab2c30d4156a731a06f2a8160285
-
-Relevant upstream source:
-
-    src/sample/terrain-diagonal-fix/TerrainDiagonalFixDirector.cpp
-    SC4TerrainDiagonalFix.ini
-
-sc4-render-services was used as a behavioral reference only. The finished DLL
-does not link to it, copy its patching helpers, or require it at runtime.
-
 Other components
 ----------------
 

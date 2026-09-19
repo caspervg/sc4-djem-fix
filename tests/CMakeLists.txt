@@ -21,4 +21,4 @@ if(MSVC)
     )
 endif()
 
-add_test(NAME SC4DjemFix.FocusedTests COMMAND SC4DjemFixTests)
+add_test(NAME SC4DjemFix.Tests COMMAND SC4DjemFixTests)

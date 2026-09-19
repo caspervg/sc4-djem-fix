@@ -7,16 +7,14 @@
 #include "spdlog/sinks/basic_file_sink.h"
 #include "spdlog/sinks/msvc_sink.h"
 
-std::shared_ptr<spdlog::logger> Logger::Get()
-{
+std::shared_ptr<spdlog::logger> Logger::Get() {
     if (!s_initialized) {
         Initialize();
     }
     return s_logger;
 }
 
-void Logger::Initialize(const std::string& logName, const std::string& userDir, const bool logToFile)
-{
+void Logger::Initialize(const std::string& logName, const std::string& userDir, const bool logToFile) {
     if (s_initialized && s_logger) {
         return;
     }
@@ -30,8 +28,7 @@ void Logger::Initialize(const std::string& logName, const std::string& userDir, 
         std::filesystem::path logDir;
         if (!userDir.empty()) {
             logDir = std::filesystem::path(userDir);
-        }
-        else {
+        } else {
             const char* userProfileEnv = std::getenv("USERPROFILE");
             const std::string userProfile = userProfileEnv ? userProfileEnv : "";
             if (!userProfile.empty()) {
@@ -51,8 +48,7 @@ void Logger::Initialize(const std::string& logName, const std::string& userDir, 
         s_logger->set_pattern("[%Y-%m-%d %H:%M:%S.%e] [%n] [%l] %v");
         s_logger->flush_on(spdlog::level::info);
         s_initialized = true;
-    }
-    catch (const std::exception&) {
+    } catch (const std::exception&) {
         auto consoleSink = std::make_shared<spdlog::sinks::msvc_sink_mt>();
         s_logger = std::make_shared<spdlog::logger>(s_logName, consoleSink);
         spdlog::set_default_logger(s_logger);
@@ -61,16 +57,14 @@ void Logger::Initialize(const std::string& logName, const std::string& userDir, 
     }
 }
 
-void Logger::SetLevel(const spdlog::level::level_enum logLevel)
-{
+void Logger::SetLevel(const spdlog::level::level_enum logLevel) {
     if (s_logger) {
         s_logger->set_level(logLevel);
         s_logger->flush_on(logLevel);
     }
 }
 
-void Logger::Shutdown()
-{
+void Logger::Shutdown() {
     if (s_logger) {
         s_logger->flush();
         s_logger.reset();
@@ -82,4 +76,3 @@ void Logger::Shutdown()
 std::shared_ptr<spdlog::logger> Logger::s_logger = nullptr;
 std::string Logger::s_logName = "SC4DjemFix";
 bool Logger::s_initialized = false;
-

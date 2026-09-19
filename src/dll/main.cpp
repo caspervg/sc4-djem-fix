@@ -2,8 +2,7 @@
 
 static SC4DjemFixDirector sDirector;
 
-cRZCOMDllDirector* RZGetCOMDllDirector()
-{
+cRZCOMDllDirector* RZGetCOMDllDirector() {
     static bool sAddedRef = false;
     if (!sAddedRef) {
         sDirector.AddRef();
@@ -11,4 +10,3 @@ cRZCOMDllDirector* RZGetCOMDllDirector()
     }
     return &sDirector;
 }
-

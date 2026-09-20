@@ -14,7 +14,7 @@ struct Settings {
     bool enabled = true;
     bool clearNonCandidates = true;
     bool matchHeightQueriesToFlippedCells = true;
-    float minHeightDelta = 12.0F;
+    float minHeightDelta = 5.0F;
     float diagonalHysteresis = 0.05F;
     std::uint32_t logEveryNChanges = 0;
 };

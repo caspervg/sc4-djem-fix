@@ -72,8 +72,13 @@ struct TerrainView {
     view.worldMaxZ = ReadField<float>(terrain, kWorldMaxZOffset);
     view.records = ReadField<const std::uint8_t*>(terrain, kVertexDataOffset);
 
+    // The count fields are exclusive bounds (FlipInternalTriangulation tests
+    // x < [this + 0x28] and z < [this + 0x2C]), while the max-cell fields are
+    // inclusive clamps used by GetAltitude.  The usual valid relationship is
+    // therefore maxCell == cellCount - 1; treating that as invalid makes every
+    // terrain view fail closed before any cell is examined.
     if (view.records == nullptr || view.cellCountX < 2 || view.cellCountZ < 2 || view.rowStride < view.cellCountX ||
-        view.maxCellX >= view.cellCountX - 1 || view.maxCellZ >= view.cellCountZ - 1) {
+        view.maxCellX >= view.cellCountX || view.maxCellZ >= view.cellCountZ) {
         return false;
     }
 

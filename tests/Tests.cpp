@@ -106,7 +106,7 @@ TEST_CASE("settings load defaults and valid values") {
     CHECK(defaultDjem.enabled);
     CHECK(defaultDjem.clearNonCandidates);
     CHECK(defaultDjem.matchHeightQueriesToFlippedCells);
-    CHECK(defaultDjem.minHeightDelta == doctest::Approx(12.0F));
+    CHECK(defaultDjem.minHeightDelta == doctest::Approx(5.0F));
     CHECK(defaultDjem.diagonalHysteresis == doctest::Approx(0.05F));
     CHECK(defaultDjem.logEveryNChanges == 0);
 
@@ -145,7 +145,7 @@ TEST_CASE("invalid settings use safe defaults") {
     CHECK(djem.enabled);
     CHECK(djem.clearNonCandidates);
     CHECK(djem.matchHeightQueriesToFlippedCells);
-    CHECK(djem.minHeightDelta == doctest::Approx(12.0F));
+    CHECK(djem.minHeightDelta == doctest::Approx(5.0F));
     CHECK(djem.diagonalHysteresis == doctest::Approx(0.05F));
     CHECK(djem.logEveryNChanges == 0);
     std::error_code ignored;
@@ -159,7 +159,7 @@ TEST_CASE("overflowing settings use safe defaults") {
     Settings overflowing;
     overflowing.Load(path);
     const auto& djem = overflowing.GetDjemSettings();
-    CHECK(djem.minHeightDelta == doctest::Approx(12.0F));
+    CHECK(djem.minHeightDelta == doctest::Approx(5.0F));
     CHECK(djem.diagonalHysteresis == doctest::Approx(0.05F));
     CHECK(djem.logEveryNChanges == 0);
     std::error_code ignored;
@@ -173,7 +173,7 @@ TEST_CASE("overflowing settings use safe defaults") {
     Settings overflowing;
     overflowing.Load(path);
     const auto& djem = overflowing.GetDjemSettings();
-    CHECK(djem.minHeightDelta == doctest::Approx(12.0F));
+    CHECK(djem.minHeightDelta == doctest::Approx(5.0F));
     CHECK(djem.diagonalHysteresis == doctest::Approx(0.05F));
     CHECK(djem.logEveryNChanges == 0);
     std::error_code ignored;

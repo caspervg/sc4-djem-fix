@@ -7,9 +7,9 @@ This document records the static evidence used by SC4 DJEM Fix. All game address
 | Purpose | VA | Static evidence |
 | --- | ---: | --- |
 | Calculate-normals call site | `0x007498CD` | Bytes `E8 8E A2 FF FF` decode to `0x00743B60`. The caller executes `PUSH ECX`, `MOV ECX, EDI`, then `CALL`, which passes the rectangle on the stack and terrain in `ECX`. |
-| Original normals and cliff-texture function | `0x00343B60` | Ghidra identifies `cSTETerrain::CalculateNormalsAndAssignCliffTextures`. It receives `this` in `ECX`, one rectangle pointer on the stack, and ends with `RET 4`. |
+| Original normals and cliff-texture function | `0x00743B60` | Ghidra identifies `cSTETerrain::CalculateNormalsAndAssignCliffTextures`. It receives `this` in `ECX`, one rectangle pointer on the stack, and ends with `RET 4`. |
 | GetAltitude vtable entry | `0x00AB3D4C` | Bytes `60 12 74 00` contain the little-endian pointer `0x00741260`. Constructor and destructor code write vtable base `0x00AB3D18`. The entry is at base plus `0x34`. |
-| Original GetAltitude(float, float) | `0x00341260` | Two four-byte stack arguments, `this` in `ECX`, x87 floating-point return, and `RET 8`. The implementation performs 16-unit cell mapping and reads terrain fields and cell records described below. |
+| Original GetAltitude(float, float) | `0x00741260` | Two four-byte stack arguments, `this` in `ECX`, x87 floating-point return, and `RET 8`. The implementation performs 16-unit cell mapping and reads terrain fields and cell records described below. |
 | FlipInternalTriangulation | `0x00741180` | `this` in `ECX`, x and z plus a Boolean value on the stack, and `RET 0x0C`. It updates flag `0x1000` at record offset `0x22`. |
 
 The `cISTETerrainMap.h` declaration is consistent with the `GetAltitude(float, float)` ABI. Because its vtable entry is replaced, calling that method virtually from the hook would recurse. The hook therefore uses the validated original target for fallback. `gzcom-dll` does not expose `FlipInternalTriangulation` or `CalculateNormalsAndAssignCliffTextures`, so those verified targets are called directly.

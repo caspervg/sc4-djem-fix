@@ -6,9 +6,7 @@ The fix also makes terrain height queries use the corrected diagonal. This keeps
 
 ## Compatibility
 
-The DLL supports **SimCity 4 Deluxe for Windows, version 1.1.641 only**. It does not claim support for 1.1.610, 1.1.638, 1.1.640, or any other executable.
-
-The DLL checks the executable version and the original instruction targets before it writes game memory. An unsupported or modified executable fails closed. No hook is installed when a check fails.
+The DLL supports **SimCity 4 Deluxe for Windows, version 1.1.641 only**.
 
 ## Installation
 
@@ -27,7 +25,7 @@ All values are in the `[SC4DjemFix]` section.
 | `Enabled` | `true` | Enable the terrain diagonal fix. |
 | `ClearNonCandidates` | `true` | Remove an old internal flip when a cell no longer meets `MinHeightDelta`. |
 | `MatchHeightQueriesToFlippedCells` | `true` | Use the corrected surface for terrain height queries. |
-| `MinHeightDelta` | `12.0` | Minimum height range across the four cell corners before the cell is considered. |
+| `MinHeightDelta` | `5.0` | Minimum height range across the four cell corners before the cell is considered for the DJEM fix. |
 | `DiagonalHysteresis` | `0.05` | Keep the current diagonal when both choices are almost equal. This prevents repeated switching. |
 | `LogEveryNChanges` | `0` | Write a summary after this many cell changes. `0` disables summaries. `1` writes one summary for every terrain-update pass that changes cells. Negative and invalid values use `0`. |
 

@@ -92,12 +92,6 @@ jobs:
           Copy-Item "README.md" -Destination $packageDir
           Copy-Item "LICENSE.txt" -Destination $packageDir
           Copy-Item "THIRD_PARTY_NOTICES.txt" -Destination $packageDir
-          Copy-Item "vendor/gzcom-dll/LICENSE" -Destination (Join-Path $packageDir "LICENSE-gzcom-dll")
-          Copy-Item "vendor/sc4-dll-utilities/LICENSE.txt" -Destination (Join-Path $packageDir "LICENSE-sc4-dll-utilities.txt")
-          Copy-Item "vcpkg_installed/x86-windows-static-md/share/fmt/copyright" -Destination (Join-Path $packageDir "LICENSE-fmt.txt")
-          Copy-Item "vcpkg_installed/x86-windows-static-md/share/pulzed-mini/copyright" -Destination (Join-Path $packageDir "LICENSE-mINI.txt")
-          Copy-Item "vcpkg_installed/x86-windows-static-md/share/spdlog/copyright" -Destination (Join-Path $packageDir "LICENSE-spdlog.txt")
-          Copy-Item "vcpkg_installed/x86-windows-static-md/share/wil/copyright" -Destination (Join-Path $packageDir "LICENSE-WIL.txt")
 
           $archivePath = Join-Path "${{ github.workspace }}" ("$($env:PROJECT_NAME)-" + $tag + "-win32.zip")
           if (Test-Path $archivePath) {

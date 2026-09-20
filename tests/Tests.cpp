@@ -28,6 +28,8 @@ TEST_CASE("DJEM selects the lower-discontinuity diagonal") {
 
 TEST_CASE("DJEM applies threshold, hysteresis, stale-flip, and cliff rules") {
     Djem::Settings settings;
+    // Use an explicit boundary here; the runtime default is intentionally 5.0.
+    settings.minHeightDelta = 12.0F;
     const auto belowThreshold = Djem::EvaluateCell({0.0F, 1.0F, 2.0F, 11.99F}, Djem::kInternalFlipFlag, settings);
     CHECK_FALSE(belowThreshold.candidate);
     CHECK(belowThreshold.action == Djem::CellAction::SetNormal);

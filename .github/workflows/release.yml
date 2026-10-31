@@ -114,3 +114,20 @@ jobs:
             --repo "${{ github.repository }}" `
             --title "${{ github.ref_name }}" `
             --generate-notes
+
+  # Points the sc4pac package at the new release on a branch of caspervg/simtropolis-channel, and
+  # links to a prefilled pull request in the job summary.
+  sc4pac:
+    needs: release-win32
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    environment: sc4pac
+    concurrency: sc4pac-caspervg-sc4-djem-fix
+    steps:
+      - uses: caspervg/sc4pac-release-action@v1
+        with:
+          channel: sebamarynissen/simtropolis-channel
+          asset-id: caspervg-sc4-djem-fix
+          asset-name: SC4DjemFix-${{ github.ref_name }}-win32.zip
+          token: ${{ secrets.SC4PAC_FORK_TOKEN }}
